@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Temporal Order Judgement Benchmark</title>
+    <style>
+      :root {
+        --bg: #000;
+        --ui: #1a1a1a;
+        --bar-color: #e0e0e0;
+        --accent: #0080ff;
+        --green: #00ff00;
+        --red: #ff4444;
+        --orange: #f2a154;
+      }
+      body {
+        background: var(--bg);
+        color: #fff;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0;
+        padding: 20px;
+        line-height: 1.5;
+        min-height: 100vh;
+      }
+
+      .top-nav {
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        display: flex;
+        gap: 8px;
+        z-index: 1000;
+      }
+      .nav-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #333;
+        color: #888;
+        padding: 6px 12px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        z-index: 2000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .card {
+        max-width: 500px;
+        background: #0a0a0a;
+        border: 1px solid #222;
+        padding: 30px;
+        border-radius: 12px;
+      }
+
+      .card h3 {
+        margin-top: 0;
+        color: var(--accent);
+      }
+      .card p,
+      .card li {
+        font-size: 14px;
+        color: #aaa;
+        margin-bottom: 12px;
+      }
+
+      .canvas-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin: 20px 0;
+      }
+
+      .test-container {
+        width: 300px;
+        height: 450px;
+        background: #050505;
+        border: 1px solid #333;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .bar {
+        width: 60px;
+        height: 4px;
+        position: absolute;
+        bottom: 40px;
+        background: var(--bar-color);
+        border-radius: 1px;
+        will-change: bottom;
+      }
+      #bar1 {
+        left: 60px;
+      }
+      #bar2 {
+        left: 180px;
+      }
+
+      .ui-hub {
+        width: 100%;
+        max-width: 600px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .control-hub {
+        position: relative;
+        width: 100%;
+        height: 140px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .trigger-stack {
+        position: relative;
+        width: 220px;
+        height: 50px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .main-trigger,
+      .repeat-btn {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      button {
+        background: var(--ui);
+        color: white;
+        border: 1px solid #444;
+        padding: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      button:hover {
+        border-color: #888;
+        background: #222;
+      }
+
+      .main-trigger {
+        background: #111;
+        border-color: var(--accent);
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+      .repeat-btn {
+        border-color: var(--orange);
+        color: var(--orange);
+        border-style: dashed;
+        font-weight: bold;
+      }
+
+      .choice-row {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+      }
+      .choice-row button {
+        min-width: 80px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        font-size: 11px;
+        background: #080808;
+      }
+      th,
+      td {
+        padding: 10px;
+        border: 1px solid #222;
+        text-align: center;
+      }
+      .pass {
+        color: var(--green);
+        font-weight: bold;
+      }
+      .fail {
+        color: var(--red);
+      }
+      .stat-card {
+        background: #111;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        text-align: left;
+        border: 1px solid #222;
+        font-size: 11px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .export-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 20px 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <button class="nav-btn" onclick="showOnboarding(true)">Info</button>
+      <button class="nav-btn" onclick="toggleHistory()">History</button>
+    </nav>
+
+    <div id="onboarding-overlay" class="overlay hidden">
+      <div class="card">
+        <h3>Temporal Order Judgement Benchmark</h3>
+        <p>
+          This test will show two bars moving upwards with a slight or no delay between them (0ms to 60ms). Your task is to determine which bar moved first, or
+          if they moved simultaneously. The delay will vary across 20 trials, and you can repeat the trial if you're unsure. At the end of each test run, you
+          will see a table of your results and you can download a JSON or CSV file with your results. Your results will also be saved in your browser, allowing
+          you to track your accuracy over time. The info button in the top right will allow you to see this message again. The history button allows you to
+          access your history at any time.
+          <br /><br />
+          NOTE: Your hardware may not be able to perfectly represent delays under 20ms.
+        </p>
+        <button class="main-trigger" style="position: static; margin-top: 20px; width: 100%" onclick="dismissOnboarding()">Begin Benchmark</button>
+      </div>
+    </div>
+
+    <div id="history-overlay" class="overlay hidden">
+      <div class="card" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px">
+          <h3 style="margin: 0">Historical Trends</h3>
+          <button onclick="toggleHistory()" style="background: none; border: none; color: #666; font-size: 20px">&times;</button>
+        </div>
+        <div id="history-list"></div>
+        <div style="margin-top: 20px; display: flex; gap: 10px">
+          <button style="flex: 1" onclick="exportHistoryCSV()">Export CSV</button>
+          <button style="flex: 1; color: var(--red); border-color: var(--red)" onclick="clearHistory()">Clear All</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="main-app">
+      <div class="ui-hub">
+        <h2 id="counter">Trial 1 / 20</h2>
+      </div>
+
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <div class="test-container">
+          <div id="bar1" class="bar"></div>
+          <div id="bar2" class="bar"></div>
+        </div>
+      </div>
+
+      <div class="ui-hub">
+        <div id="control-hub" class="control-hub">
+          <div class="trigger-stack">
+            <button class="main-trigger" id="go">Run Trial</button>
+            <button class="repeat-btn hidden" id="repeat" onclick="repeatTrial()">Repeat</button>
+          </div>
+          <div id="choice-area" class="hidden">
+            <div class="choice-row">
+              <button onclick="record('bar1')">Left</button>
+              <button onclick="record('equal')">Equal</button>
+              <button onclick="record('bar2')">Right</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="results-area" class="hidden" style="width: 100%">
+          <div id="stat-summary" class="stat-card"></div>
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th>Gap</th>
+                <th>Actual</th>
+                <th>Guess</th>
+                <th>Rpts</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+          <div class="export-grid">
+            <button onclick="exportCurrentJSON()">Session JSON</button>
+            <button onclick="exportCurrentCSV()">Session CSV</button>
+          </div>
+          <button class="main-trigger" style="position: static; width: 100%" onclick="location.reload()">Start New Session</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const baseOffsets = [0, 5, 10, 20, 30, 40, 50, 60, 10, 0];
+      const offsets = baseOffsets.concat(baseOffsets).sort(() => Math.random() - 0.5);
+      let current = 0,
+        data = [],
+        expected = "",
+        lastFirstIsB1 = null,
+        lastMs = null,
+        repeatCount = 0;
+
+      const b1 = document.getElementById("bar1"),
+        b2 = document.getElementById("bar2");
+      const goBtn = document.getElementById("go"),
+        repeatBtn = document.getElementById("repeat"),
+        choiceArea = document.getElementById("choice-area");
+      const canvasWrap = document.getElementById("canvas-wrapper"),
+        controlHub = document.getElementById("control-hub");
+
+      window.onload = () => {
+        if (!localStorage.getItem("explanation-read")) showOnboarding();
+        renderHistory();
+      };
+
+      function showOnboarding() {
+        document.getElementById("onboarding-overlay").classList.remove("hidden");
+      }
+      function dismissOnboarding() {
+        localStorage.setItem("explanation-read", "true");
+        document.getElementById("onboarding-overlay").classList.add("hidden");
+      }
+      function toggleHistory() {
+        document.getElementById("history-overlay").classList.toggle("hidden");
+      }
+
+      function resetBars() {
+        b1.style.transition = b2.style.transition = "none";
+        b1.style.bottom = "40px";
+        b2.style.bottom = "40px";
+      }
+
+      function runTrial(ms, firstIsB1) {
+        expected = ms === 0 ? "equal" : firstIsB1 ? "bar1" : "bar2";
+        lastFirstIsB1 = firstIsB1;
+        lastMs = ms;
+        resetBars();
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const move = (el) => {
+              el.style.transition = "bottom 0.5s linear";
+              el.style.bottom = "400px";
+            };
+            move(firstIsB1 ? b1 : b2);
+            if (ms === 0) move(firstIsB1 ? b2 : b1);
+            else setTimeout(() => move(firstIsB1 ? b2 : b1), ms);
+            setTimeout(() => {
+              repeatBtn.classList.remove("hidden");
+              choiceArea.classList.remove("hidden");
+            }, 600);
+          });
+        });
+      }
+
+      goBtn.onclick = () => {
+        goBtn.classList.add("hidden");
+        runTrial(offsets[current], Math.random() > 0.5);
+      };
+
+      function repeatTrial() {
+        repeatCount++;
+        repeatBtn.classList.add("hidden");
+        choiceArea.classList.add("hidden");
+        runTrial(lastMs, lastFirstIsB1);
+      }
+
+      function record(choice) {
+        data.push({
+          ms: offsets[current],
+          expected: expected === "equal" ? "Equal" : expected === "bar1" ? "Left" : "Right",
+          guess: choice === "equal" ? "Equal" : choice === "bar1" ? "Left" : "Right",
+          pass: choice === expected,
+          repeats: repeatCount,
+        });
+
+        repeatCount = 0;
+        repeatBtn.classList.add("hidden");
+        choiceArea.classList.add("hidden");
+        resetBars();
+
+        current++;
+        if (current < offsets.length) {
+          document.getElementById("counter").innerText = `Trial ${current + 1} / ${offsets.length}`;
+          goBtn.classList.remove("hidden");
+        } else {
+          finish();
+        }
+      }
+
+      function finish() {
+        const session = {
+          timestamp: new Date().toISOString(),
+          accuracyEqual: ((data.filter((d) => d.ms === 0 && d.pass).length / data.filter((d) => d.ms === 0).length) * 100).toFixed(1),
+          overallAccuracy: ((data.filter((d) => d.pass).length / data.length) * 100).toFixed(1),
+          totalRepeats: data.reduce((a, b) => a + b.repeats, 0),
+          trials: data,
+        };
+        const history = JSON.parse(localStorage.getItem("temporalHistory") || "[]");
+        history.unshift(session);
+        localStorage.setItem("temporalHistory", JSON.stringify(history.slice(0, 50)));
+
+        // HIDE CANVAS ON FINISH
+        canvasWrap.classList.add("hidden");
+        controlHub.classList.add("hidden");
+
+        document.getElementById("results-area").classList.remove("hidden");
+        document.getElementById("counter").innerText = "Session Complete";
+        document.getElementById("results-body").innerHTML = data
+          .map(
+            (d) =>
+              `<tr><td>${d.ms}ms</td><td>${d.expected}</td><td>${d.guess}</td><td style="color:var(--orange)">${d.repeats || "-"}</td><td class="${d.pass ? "pass" : "fail"}">${d.pass ? "PASS" : "FAIL"}</td></tr>`,
+          )
+          .join("");
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const history = JSON.parse(localStorage.getItem("temporalHistory") || "[]");
+        const list = document.getElementById("history-list");
+        const summary = document.getElementById("stat-summary");
+        if (history.length > 0) {
+          const last = history[0];
+          summary.innerHTML = `<strong>Latest Score:</strong> ${last.overallAccuracy}% Acc | ${last.totalRepeats} Repeats | 0ms Accuracy: ${last.accuracyEqual}%`;
+        }
+        list.innerHTML = history
+          .map(
+            (s) =>
+              `<div class="stat-card"><strong>${new Date(s.timestamp).toLocaleString()}</strong><br>Acc: ${s.overallAccuracy}% | 0ms: ${s.accuracyEqual}% | Rpts: ${s.totalRepeats}</div>`,
+          )
+          .join("");
+      }
+
+      function downloadFile(content, fileName, contentType) {
+        const a = document.createElement("a");
+        const file = new Blob([content], { type: contentType });
+        a.href = URL.createObjectURL(file);
+        a.download = fileName;
+        a.click();
+      }
+      function exportCurrentJSON() {
+        downloadFile(JSON.stringify(data, null, 2), "session.json", "application/json");
+      }
+      function exportCurrentCSV() {
+        let csv = "Gap,Actual,Guess,Repeats,Result\n";
+        data.forEach((t) => (csv += `${t.ms},${t.expected},${t.guess},${t.repeats},${t.pass}\n`));
+        downloadFile(csv, "session.csv", "text/csv");
+      }
+      function exportHistoryCSV() {
+        const history = JSON.parse(localStorage.getItem("temporalHistory") || "[]");
+        let csv = "Timestamp,Gap,Actual,Guess,Repeats,Result\n";
+        history.forEach((s) => s.trials.forEach((t) => (csv += `"${s.timestamp}",${t.ms},${t.expected},${t.guess},${t.repeats},${t.pass}\n`)));
+        downloadFile(csv, "history.csv", "text/csv");
+      }
+      function clearHistory() {
+        if (confirm("Clear history?")) {
+          localStorage.removeItem("temporalHistory");
+          renderHistory();
+        }
+      }
+    </script>
+  </body>
+</html>
